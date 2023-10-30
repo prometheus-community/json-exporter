@@ -23,6 +23,7 @@ import (
 // Metric contains values that define a metric
 type Metric struct {
 	Name           string
+	Engine         EngineType
 	Path           string
 	Labels         map[string]string
 	Type           ScrapeType
@@ -44,7 +45,14 @@ type ValueType string
 const (
 	ValueTypeGauge   ValueType = "gauge"
 	ValueTypeCounter ValueType = "counter"
-	ValueTypeUntyped ValueType = "untyped"
+	ValueTypeUntyped ValueType = "untyped" // default
+)
+
+type EngineType string
+
+const (
+	EngineTypeJSONPath EngineType = "jsonpath" // default
+	EngineTypeCEL      EngineType = "cel"
 )
 
 // Config contains multiple modules.
@@ -88,6 +96,9 @@ func LoadConfig(configPath string) (Config, error) {
 			}
 			if module.Metrics[i].ValueType == "" {
 				module.Metrics[i].ValueType = ValueTypeUntyped
+			}
+			if module.Metrics[i].Engine == "" {
+				module.Metrics[i].Engine = EngineTypeJSONPath
 			}
 		}
 	}

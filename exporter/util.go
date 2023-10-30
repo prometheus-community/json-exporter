@@ -102,6 +102,7 @@ func CreateMetricsList(c config.Module) ([]JSONMetric, error) {
 					variableLabels,
 					nil,
 				),
+				EngineType:             metric.Engine,
 				KeyJSONPath:            metric.Path,
 				LabelsJSONPaths:        variableLabelsValues,
 				ValueType:              valueType,
@@ -124,6 +125,7 @@ func CreateMetricsList(c config.Module) ([]JSONMetric, error) {
 						variableLabels,
 						nil,
 					),
+					EngineType:             metric.Engine,
 					KeyJSONPath:            metric.Path,
 					ValueJSONPath:          valuePath,
 					LabelsJSONPaths:        variableLabelsValues,
@@ -133,7 +135,7 @@ func CreateMetricsList(c config.Module) ([]JSONMetric, error) {
 				metrics = append(metrics, jsonMetric)
 			}
 		default:
-			return nil, fmt.Errorf("Unknown metric type: '%s', for metric: '%s'", metric.Type, metric.Name)
+			return nil, fmt.Errorf("unknown metric type: '%s', for metric: '%s'", metric.Type, metric.Name)
 		}
 	}
 	return metrics, nil
