@@ -22,6 +22,7 @@ import (
 	"math"
 	"net/http"
 	"net/url"
+	"regexp"
 	"strconv"
 	"strings"
 	"text/template"
@@ -32,6 +33,8 @@ import (
 	pconfig "github.com/prometheus/common/config"
 )
 
+var sanitzieValueRE = regexp.MustCompile(`(,|_)`)
+
 func MakeMetricName(parts ...string) string {
 	return strings.Join(parts, "_")
 }
@@ -41,7 +44,7 @@ func SanitizeValue(s string) (float64, error) {
 	var value float64
 	var resultErr string
 
-	if value, err = strconv.ParseFloat(s, 64); err == nil {
+	if value, err = strconv.ParseFloat(sanitzieValueRE.ReplaceAllString(s, ""), 64); err == nil {
 		return value, nil
 	}
 	resultErr = fmt.Sprintf("%s", err)
