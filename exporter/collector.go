@@ -95,7 +95,7 @@ func (mc JSONMetricCollector) Collect(ch chan<- prometheus.Metric) {
 							m.Desc,
 							m.ValueType,
 							floatValue,
-							extractLabels(mc.Logger, jdata, m.LabelsJSONPaths)...,
+							extractLabels(mc.Logger, mc.Data, m.LabelsJSONPaths)...,
 						)
 						ch <- timestampMetric(mc.Logger, m, jdata, metric)
 					} else {
