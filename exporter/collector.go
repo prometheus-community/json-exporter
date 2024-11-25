@@ -18,6 +18,8 @@ import (
 	"encoding/json"
 	"log/slog"
 	"time"
+	"math/big"
+	"strings"
 
 	"github.com/prometheus-community/json_exporter/config"
 	"github.com/prometheus/client_golang/prometheus"
@@ -88,6 +90,11 @@ func (mc JSONMetricCollector) Collect(ch chan<- prometheus.Metric) {
 					if err != nil {
 						mc.Logger.Error("Failed to extract value for metric", "path", m.ValueJSONPath, "err", err, "metric", m.Desc)
 						continue
+					}
+
+					// When value starts by '0x', convert hex to decimal
+					if strings.HasPrefix(value, "0x") {
+						value = formatHex(value)
 					}
 
 					if floatValue, err := SanitizeValue(value); err == nil {
@@ -176,4 +183,12 @@ func timestampMetric(logger *slog.Logger, m JSONMetric, data []byte, pm promethe
 	}
 	timestamp := time.UnixMilli(epochTime)
 	return prometheus.NewMetricWithTimestamp(timestamp, pm)
+}
+
+func formatHex(s string) string {
+	st := strings.Replace(s, "0x", "", -1)
+	i := new(big.Int)
+	i.SetString(st, 16)
+	str := i.String()
+	return str
 }
