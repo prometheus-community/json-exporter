@@ -62,10 +62,12 @@ func SanitizeValue(s string) (float64, error) {
 
 func SanitizeIntValue(s string) (int64, error) {
 	var err error
+	var valueFloat float64
 	var value int64
 	var resultErr string
 
-	if value, err = strconv.ParseInt(s, 10, 64); err == nil {
+	if valueFloat, err = strconv.ParseFloat(s, 64); err == nil {
+		value = int64(math.Round(valueFloat))
 		return value, nil
 	}
 	resultErr = fmt.Sprintf("%s", err)

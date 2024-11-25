@@ -13,7 +13,7 @@ modules:
     - name: example_timestamped_value
       type: object
       path: '{ .values[?(@.state == "INACTIVE")] }'
-      epochTimestamp: '{ .timestamp }'
+      epochtimestamp: '{ .timestamp }'
       help: Example of a timestamped value scrape in the json
       labels:
         environment: beta # static label

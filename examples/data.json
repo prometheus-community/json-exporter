@@ -1,6 +1,5 @@
 {
     "counter": 1234,
-    "timestamp": 1657568506,
     "values": [
         {
             "id": "id-A",
@@ -12,6 +11,7 @@
             "id": "id-B",
             "count": 2,
             "some_boolean": true,
+            "timestamp": 1657568506,
             "state": "INACTIVE"
         },
         {
