@@ -132,6 +132,28 @@ func CreateMetricsList(c config.Module) ([]JSONMetric, error) {
 				}
 				metrics = append(metrics, jsonMetric)
 			}
+		case config.CountScrape:
+			var variableLabels, variableLabelsValues []string
+			for k, v := range metric.Labels {
+				variableLabels = append(variableLabels, k)
+				variableLabelsValues = append(variableLabelsValues, v)
+			}
+			jsonMetric := JSONMetric{
+				Type: config.CountScrape,
+				Desc: prometheus.NewDesc(
+					metric.Name,
+					metric.Help,
+					variableLabels,
+					nil,
+				),
+				KeyJSONPath:            metric.Path,
+				MinimumCount:           metric.MinimumCount,
+				LabelsJSONPaths:        variableLabelsValues,
+				ValueType:              valueType,
+				EpochTimestampJSONPath: metric.EpochTimestamp,
+			}
+			fmt.Println(jsonMetric)
+			metrics = append(metrics, jsonMetric)
 		default:
 			return nil, fmt.Errorf("Unknown metric type: '%s', for metric: '%s'", metric.Type, metric.Name)
 		}

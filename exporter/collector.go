@@ -38,6 +38,7 @@ type JSONMetric struct {
 	LabelsJSONPaths        []string
 	ValueType              prometheus.ValueType
 	EpochTimestampJSONPath string
+	MinimumCount           int
 }
 
 func (mc JSONMetricCollector) Describe(ch chan<- *prometheus.Desc) {
@@ -67,6 +68,42 @@ func (mc JSONMetricCollector) Collect(ch chan<- prometheus.Metric) {
 			} else {
 				mc.Logger.Error("Failed to convert extracted value to float64", "path", m.KeyJSONPath, "value", value, "err", err, "metric", m.Desc)
 				continue
+			}
+
+		case config.CountScrape:
+			values, err := extractValue(mc.Logger, mc.Data, m.KeyJSONPath, true)
+			if err != nil {
+				level.Error(mc.Logger).Log("msg", "Failed to extract json objects for metric", "err", err, "metric", m.Desc)
+				continue
+			}
+
+			var jsonData []interface{}
+			counts := make(map[interface{}]int)
+
+			if err := json.Unmarshal([]byte(values), &jsonData); err == nil {
+				for _, data := range jsonData {
+					counts[data]++
+				}
+				for data, count := range counts {
+					if count >= m.MinimumCount {
+						jdata, err := json.Marshal(data)
+						if err != nil {
+							level.Error(mc.Logger).Log("msg", "Failed to marshal data to json", "path", m.ValueJSONPath, "err", err, "metric", m.Desc, "data", data)
+							continue
+						}
+						if err != nil {
+							level.Error(mc.Logger).Log("msg", "Failed to extract value for metric", "path", m.ValueJSONPath, "err", err, "metric", m.Desc)
+							continue
+						}
+
+						ch <- prometheus.MustNewConstMetric(
+							m.Desc,
+							prometheus.UntypedValue,
+							float64(count),
+							extractLabels(mc.Logger, jdata, m.LabelsJSONPaths)...,
+						)
+					}
+				}
 			}
 
 		case config.ObjectScrape:

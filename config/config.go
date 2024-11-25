@@ -30,6 +30,7 @@ type Metric struct {
 	EpochTimestamp string
 	Help           string
 	Values         map[string]string
+	MinimumCount   int
 }
 
 type ScrapeType string
@@ -37,6 +38,7 @@ type ScrapeType string
 const (
 	ValueScrape  ScrapeType = "value" // default
 	ObjectScrape ScrapeType = "object"
+	CountScrape  ScrapeType = "countbylabel"
 )
 
 type ValueType string
@@ -89,8 +91,10 @@ func LoadConfig(configPath string) (Config, error) {
 			if module.Metrics[i].ValueType == "" {
 				module.Metrics[i].ValueType = ValueTypeUntyped
 			}
+			if !(module.Metrics[i].MinimumCount > 0) {
+				module.Metrics[i].MinimumCount = 1
+			}
 		}
 	}
-
 	return config, nil
 }

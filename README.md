@@ -21,6 +21,10 @@ Serving HTTP on :: port 8000 (http://[::]:8000/) ...
 ## TEST with 'default' module
 
 $ curl "http://localhost:7979/probe?module=default&target=http://localhost:8000/examples/data.json"
+# HELP example_count Example of count object from a json
+# TYPE example_count untyped
+example_count{environment="beta",state="ACTIVE"} 2
+example_count{environment="beta",state="INACTIVE"} 1
 # HELP example_global_value Example of a top-level global value scrape in the json
 # TYPE example_global_value untyped
 example_global_value{environment="beta",location="planet-mars"} 1234

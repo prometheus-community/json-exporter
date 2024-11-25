@@ -30,6 +30,15 @@ modules:
         active: 1         # static value
         count: '{.count}' # dynamic value
         boolean: '{.some_boolean}'
+    - name: example_count
+      type: countbylabel
+      help: Example of count json labels
+      path: '{.values[*].state}'
+      labels:
+        environment: beta # static label
+        state: '{}'       # dynamic label
+      # The minimum count of labels required to expose the metric for each label. Defaults to 1.
+      minimumCount: 1
 
   animals:
     metrics:
@@ -66,4 +75,3 @@ modules:
     #   content: |
     #     {"time_diff": "{{ duration `95` }}","anotherVar": "{{ .myVal | first }}"}
     #   templatize: true
-
