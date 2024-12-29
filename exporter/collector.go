@@ -17,6 +17,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"log/slog"
+	"strings"
 	"time"
 
 	"github.com/prometheus-community/json_exporter/config"
@@ -144,7 +145,7 @@ func extractValue(logger *slog.Logger, data []byte, path string, enableJSONOutpu
 		return res, nil
 	}
 
-	return buf.String(), nil
+	return strings.TrimSpace(buf.String()), nil
 }
 
 // Returns the list of labels created from the list of provided json paths

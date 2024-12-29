@@ -1,0 +1,27 @@
+{
+    "counter": 1234,
+    "values": [
+        {
+            "id": "id-A",
+            "count": 1,
+            "some_boolean": true,
+            "state": "    ACTIVE   ",
+            "float": "   3.1415   "
+        },
+        {
+            "id": "id-B",
+            "count": 2,
+            "some_boolean": true,
+            "state": "    INACTIVE",
+            "float": "   3.141   "
+        },
+        {
+            "id": "id-C",
+            "count": 3,
+            "some_boolean": false,
+            "state": "   ACTIVE",
+            "float": "   3.14"
+        }
+    ],
+    "location": "    mars   "
+}

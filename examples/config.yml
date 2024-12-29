@@ -43,6 +43,18 @@ modules:
       values:
         population: '{ .population }'
 
+  trim:
+    metrics:
+    - name: animal
+      type: object
+      help: Example of top-level lists in a separate module
+      path: '{ [*] }'
+      labels:
+        name: '{ .noun }'
+        predator: '{ .predator }'
+      values:
+        population: '{ .population }'
+
     ## HTTP connection configurations can be set in 'modules.<module_name>.http_client_config' field. For full http client config parameters, ref: https://pkg.go.dev/github.com/prometheus/common/config?tab=doc#HTTPClientConfig
     #
     # http_client_config:

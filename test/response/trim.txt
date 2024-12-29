@@ -1,0 +1,19 @@
+# HELP example_global_value Example of a top-level global value scrape in the json
+# TYPE example_global_value gauge
+example_global_value{environment="beta",location="planet-mars"} 1234
+# HELP example_value_trim_active Example of sub-level value scrapes from a json
+# TYPE example_value_trim_active counter
+example_value_trim_active{environment="beta",id="id-A"} 1
+example_value_trim_active{environment="beta",id="id-C"} 1
+# HELP example_value_trim_boolean Example of sub-level value scrapes from a json
+# TYPE example_value_trim_boolean counter
+example_value_trim_boolean{environment="beta",id="id-A"} 1
+example_value_trim_boolean{environment="beta",id="id-C"} 0
+# HELP example_value_trim_count Example of sub-level value scrapes from a json
+# TYPE example_value_trim_count counter
+example_value_trim_count{environment="beta",id="id-A"} 1
+example_value_trim_count{environment="beta",id="id-C"} 3
+# HELP example_value_count Example of sub-level value scrapes from a json
+# TYPE example_value_count counter
+example_value_float{environment="beta",id="id-A"} 3.1415
+example_value_float{environment="beta",id="id-C"} 3.14

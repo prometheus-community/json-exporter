@@ -138,6 +138,7 @@ func TestCorrectResponse(t *testing.T) {
 	}{
 		{"../test/config/good.yml", "/serve/good.json", "../test/response/good.txt", true},
 		{"../test/config/good.yml", "/serve/repeat-metric.json", "../test/response/good.txt", false},
+		{"../test/config/trim.yml", "/serve/trim.json", "../test/response/good.txt", false},
 	}
 
 	target := httptest.NewServer(http.FileServer(http.Dir("../test")))
