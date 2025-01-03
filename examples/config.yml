@@ -6,12 +6,14 @@ modules:
     metrics:
     - name: example_global_value
       path: '{ .counter }'
+      valuetype: counter
       help: Example of a top-level global value scrape in the json
       labels:
         environment: beta # static label
         location: 'planet-{.location}'          # dynamic label
     - name: example_timestamped_value
       type: object
+      valuetype: gauge
       path: '{ .values[?(@.state == "INACTIVE")] }'
       epochTimestamp: '{ .timestamp }'
       help: Example of a timestamped value scrape in the json
@@ -21,6 +23,7 @@ modules:
         count: '{.count}' # dynamic value
     - name: example_value
       type: object
+      valuetype: gauge
       help: Example of sub-level value scrapes from a json
       path: '{.values[?(@.state == "ACTIVE")]}'
       labels:
@@ -35,6 +38,7 @@ modules:
     metrics:
     - name: animal
       type: object
+      valuetype: gauge
       help: Example of top-level lists in a separate module
       path: '{ [*] }'
       labels:
