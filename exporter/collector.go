@@ -16,11 +16,18 @@ package exporter
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"log/slog"
+	"reflect"
 	"time"
 
+	"github.com/google/cel-go/cel"
+	"github.com/google/cel-go/common/types/ref"
 	"github.com/prometheus-community/json_exporter/config"
 	"github.com/prometheus/client_golang/prometheus"
+	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/proto"
+	structpb "google.golang.org/protobuf/types/known/structpb"
 	"k8s.io/client-go/util/jsonpath"
 )
 
@@ -33,6 +40,7 @@ type JSONMetricCollector struct {
 type JSONMetric struct {
 	Desc                   *prometheus.Desc
 	Type                   config.ScrapeType
+	EngineType             config.EngineType
 	KeyJSONPath            string
 	ValueJSONPath          string
 	LabelsJSONPaths        []string
@@ -50,7 +58,8 @@ func (mc JSONMetricCollector) Collect(ch chan<- prometheus.Metric) {
 	for _, m := range mc.JSONMetrics {
 		switch m.Type {
 		case config.ValueScrape:
-			value, err := extractValue(mc.Logger, mc.Data, m.KeyJSONPath, false)
+			mc.Logger.Debug("Extracting value for metric", "path", m.KeyJSONPath, "metric", m.Desc)
+			value, err := extractValue(mc.Logger, m.EngineType, mc.Data, m.KeyJSONPath, false)
 			if err != nil {
 				mc.Logger.Error("Failed to extract value for metric", "path", m.KeyJSONPath, "err", err, "metric", m.Desc)
 				continue
@@ -61,7 +70,7 @@ func (mc JSONMetricCollector) Collect(ch chan<- prometheus.Metric) {
 					m.Desc,
 					m.ValueType,
 					floatValue,
-					extractLabels(mc.Logger, mc.Data, m.LabelsJSONPaths)...,
+					extractLabels(mc.Logger, m.EngineType, mc.Data, m.LabelsJSONPaths)...,
 				)
 				ch <- timestampMetric(mc.Logger, m, mc.Data, metric)
 			} else {
@@ -70,7 +79,8 @@ func (mc JSONMetricCollector) Collect(ch chan<- prometheus.Metric) {
 			}
 
 		case config.ObjectScrape:
-			values, err := extractValue(mc.Logger, mc.Data, m.KeyJSONPath, true)
+			mc.Logger.Debug("Extracting object for metric", "path", m.KeyJSONPath, "metric", m.Desc)
+			values, err := extractValue(mc.Logger, m.EngineType, mc.Data, m.KeyJSONPath, true)
 			if err != nil {
 				mc.Logger.Error("Failed to extract json objects for metric", "err", err, "metric", m.Desc)
 				continue
@@ -84,7 +94,7 @@ func (mc JSONMetricCollector) Collect(ch chan<- prometheus.Metric) {
 						mc.Logger.Error("Failed to marshal data to json", "path", m.ValueJSONPath, "err", err, "metric", m.Desc, "data", data)
 						continue
 					}
-					value, err := extractValue(mc.Logger, jdata, m.ValueJSONPath, false)
+					value, err := extractValue(mc.Logger, m.EngineType, jdata, m.ValueJSONPath, false)
 					if err != nil {
 						mc.Logger.Error("Failed to extract value for metric", "path", m.ValueJSONPath, "err", err, "metric", m.Desc)
 						continue
@@ -95,7 +105,7 @@ func (mc JSONMetricCollector) Collect(ch chan<- prometheus.Metric) {
 							m.Desc,
 							m.ValueType,
 							floatValue,
-							extractLabels(mc.Logger, jdata, m.LabelsJSONPaths)...,
+							extractLabels(mc.Logger, m.EngineType, jdata, m.LabelsJSONPaths)...,
 						)
 						ch <- timestampMetric(mc.Logger, m, jdata, metric)
 					} else {
@@ -104,7 +114,7 @@ func (mc JSONMetricCollector) Collect(ch chan<- prometheus.Metric) {
 					}
 				}
 			} else {
-				mc.Logger.Error("Failed to convert extracted objects to json", "err", err, "metric", m.Desc)
+				mc.Logger.Error("Failed to convert extracted objects to json", "value", values, "err", err, "metric", m.Desc)
 				continue
 			}
 		default:
@@ -114,8 +124,19 @@ func (mc JSONMetricCollector) Collect(ch chan<- prometheus.Metric) {
 	}
 }
 
+func extractValue(logger *slog.Logger, engine config.EngineType, data []byte, path string, enableJSONOutput bool) (string, error) {
+	switch engine {
+	case config.EngineTypeJSONPath:
+		return extractValueJSONPath(logger, data, path, enableJSONOutput)
+	case config.EngineTypeCEL:
+		return extractValueCEL(logger, data, path, enableJSONOutput)
+	default:
+		return "", fmt.Errorf("Unknown engine type: %s", engine)
+	}
+}
+
 // Returns the last matching value at the given json path
-func extractValue(logger *slog.Logger, data []byte, path string, enableJSONOutput bool) (string, error) {
+func extractValueJSONPath(logger *slog.Logger, data []byte, path string, enableJSONOutput bool) (string, error) {
 	var jsonData interface{}
 	buf := new(bytes.Buffer)
 
@@ -147,11 +168,70 @@ func extractValue(logger *slog.Logger, data []byte, path string, enableJSONOutpu
 	return buf.String(), nil
 }
 
+// Returns the last matching value at the given json path
+func extractValueCEL(logger *slog.Logger, data []byte, expression string, enableJSONOutput bool) (string, error) {
+
+	var jsonData map[string]any
+
+	err := json.Unmarshal(data, &jsonData)
+	if err != nil {
+		logger.Error("Failed to unmarshal data to json", "err", err, "data", data)
+		return "", err
+	}
+
+	inputVars := make([]cel.EnvOption, 0, len(jsonData))
+	for k := range jsonData {
+		inputVars = append(inputVars, cel.Variable(k, cel.DynType))
+	}
+
+	env, err := cel.NewEnv(inputVars...)
+
+	if err != nil {
+		logger.Error("Failed to set up CEL environment", "err", err, "data", data)
+		return "", err
+	}
+
+	ast, issues := env.Compile(expression)
+	if issues != nil && issues.Err() != nil {
+		logger.Error("CEL type-check error", "err", issues.String(), "expression", expression)
+		return "", err
+	}
+	prg, err := env.Program(ast)
+	if err != nil {
+		logger.Error("CEL program construction error", "err", err)
+		return "", err
+	}
+
+	out, _, err := prg.Eval(jsonData)
+	if err != nil {
+		logger.Error("Failed to evaluate cel query", "err", err, "expression", expression, "data", jsonData)
+		return "", err
+	}
+
+	// Since we are finally going to extract only float64, unquote if necessary
+
+	//res, err := jsonpath.UnquoteExtend(fmt.Sprintf("%g", out))
+	//if err == nil {
+	//	level.Error(logger).Log("msg","Triggered")
+	//	return res, nil
+	//}
+	logger.Error("Triggered later", "val", out)
+	if enableJSONOutput {
+		res, err := valueToJSON(out)
+		if err != nil {
+			return "", err
+		}
+		return res, nil
+	}
+
+	return fmt.Sprintf("%v", out), nil
+}
+
 // Returns the list of labels created from the list of provided json paths
-func extractLabels(logger *slog.Logger, data []byte, paths []string) []string {
+func extractLabels(logger *slog.Logger, engine config.EngineType, data []byte, paths []string) []string {
 	labels := make([]string, len(paths))
 	for i, path := range paths {
-		if result, err := extractValue(logger, data, path, false); err == nil {
+		if result, err := extractValue(logger, engine, data, path, false); err == nil {
 			labels[i] = result
 		} else {
 			logger.Error("Failed to extract label value", "err", err, "path", path, "data", data)
@@ -164,7 +244,7 @@ func timestampMetric(logger *slog.Logger, m JSONMetric, data []byte, pm promethe
 	if m.EpochTimestampJSONPath == "" {
 		return pm
 	}
-	ts, err := extractValue(logger, data, m.EpochTimestampJSONPath, false)
+	ts, err := extractValue(logger, m.EngineType, data, m.EpochTimestampJSONPath, false)
 	if err != nil {
 		logger.Error("Failed to extract timestamp for metric", "path", m.KeyJSONPath, "err", err, "metric", m.Desc)
 		return pm
@@ -176,4 +256,19 @@ func timestampMetric(logger *slog.Logger, m JSONMetric, data []byte, pm promethe
 	}
 	timestamp := time.UnixMilli(epochTime)
 	return prometheus.NewMetricWithTimestamp(timestamp, pm)
+}
+
+// valueToJSON converts the CEL type to a protobuf JSON representation and
+// marshals the result to a string.
+func valueToJSON(val ref.Val) (string, error) {
+	v, err := val.ConvertToNative(reflect.TypeOf(&structpb.Value{}))
+	if err != nil {
+		return "", err
+	}
+	marshaller := protojson.MarshalOptions{Indent: "    "}
+	bytes, err := marshaller.Marshal(v.(proto.Message))
+	if err != nil {
+		return "", err
+	}
+	return string(bytes), err
 }

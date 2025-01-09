@@ -2,7 +2,7 @@ json_exporter
 ========================
 [![CircleCI](https://circleci.com/gh/prometheus-community/json_exporter.svg?style=svg)](https://circleci.com/gh/prometheus-community/json_exporter)
 
-A [prometheus](https://prometheus.io/) exporter which scrapes remote JSON by JSONPath.
+A [prometheus](https://prometheus.io/) exporter which scrapes remote JSON by JSONPath or [CEL (Common Expression Language)](https://github.com/google/cel-spec).
 
 - [Supported JSONPath Syntax](https://kubernetes.io/docs/reference/kubectl/jsonpath/)
 - [Examples configurations](/examples)
@@ -21,6 +21,24 @@ Serving HTTP on :: port 8000 (http://[::]:8000/) ...
 ## TEST with 'default' module
 
 $ curl "http://localhost:7979/probe?module=default&target=http://localhost:8000/examples/data.json"
+# HELP example_cel_global_value Example of a top-level global value scrape in the json using cel
+# TYPE example_cel_global_value gauge
+example_cel_global_value{environment="beta",location="planet-mars"} 1234
+# HELP example_cel_timestamped_value_count Example of a timestamped value scrape in the json
+# TYPE example_cel_timestamped_value_count untyped
+example_cel_timestamped_value_count{environment="beta"} 2
+# HELP example_cel_value_active Example of sub-level value scrapes from a json
+# TYPE example_cel_value_active untyped
+example_cel_value_active{environment="beta",id="id-A"} 1
+example_cel_value_active{environment="beta",id="id-C"} 1
+# HELP example_cel_value_boolean Example of sub-level value scrapes from a json
+# TYPE example_cel_value_boolean untyped
+example_cel_value_boolean{environment="beta",id="id-A"} 1
+example_cel_value_boolean{environment="beta",id="id-C"} 0
+# HELP example_cel_value_count Example of sub-level value scrapes from a json
+# TYPE example_cel_value_count untyped
+example_cel_value_count{environment="beta",id="id-A"} 1
+example_cel_value_count{environment="beta",id="id-C"} 3
 # HELP example_global_value Example of a top-level global value scrape in the json
 # TYPE example_global_value untyped
 example_global_value{environment="beta",location="planet-mars"} 1234

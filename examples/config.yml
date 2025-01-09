@@ -9,7 +9,17 @@ modules:
       help: Example of a top-level global value scrape in the json
       labels:
         environment: beta # static label
-        location: 'planet-{.location}'          # dynamic label
+        location: 'planet-{ .location }' # dynamic label
+
+    - name: example_cel_global_value
+      engine: cel
+      path: '.counter'
+      help: Example of a top-level global value scrape in the json using cel
+      valuetype: 'gauge'
+      labels:
+        environment: "\"beta\"" # static label. Quotes need to be escaped for CEL
+        location: "\"planet-\"+.location" # dynamic label. Quotes need to be escaped for CEL
+
     - name: example_timestamped_value
       type: object
       path: '{ .values[?(@.state == "INACTIVE")] }'
@@ -18,18 +28,44 @@ modules:
       labels:
         environment: beta # static label
       values:
-        count: '{.count}' # dynamic value
+        count: '{ .count }' # dynamic value
+
+    - name: example_cel_timestamped_value
+      type: object
+      engine: cel
+      path: ".values.filter(i, i.state == \"INACTIVE\")"
+      epochTimestamp: '.timestamp'
+      help: Example of a timestamped value scrape in the json
+      labels:
+        environment: "\"beta\"" # static label
+      values:
+        count: '.count' # dynamic value
+
     - name: example_value
       type: object
       help: Example of sub-level value scrapes from a json
-      path: '{.values[?(@.state == "ACTIVE")]}'
+      path: '{ .values[?(@.state == "ACTIVE")] }'
       labels:
         environment: beta # static label
-        id: '{.id}'       # dynamic label
+        id: '{ .id }'       # dynamic label
       values:
         active: 1         # static value
-        count: '{.count}' # dynamic value
-        boolean: '{.some_boolean}'
+        count: '{ .count }' # dynamic value
+        boolean: '{ .some_boolean }'
+
+    - name: example_cel_value
+      type: object
+      engine: cel
+      help: Example of sub-level value scrapes from a json
+      path: ".values.filter(i, i.state == \"ACTIVE\")"
+      labels:
+        environment: "\"beta\"" # static label
+        id: '.id' # dynamic label
+      values:
+        active: 1 # static value
+        count: '.count' # dynamic value
+        boolean: '.some_boolean'
+
 
   animals:
     metrics:
@@ -42,6 +78,17 @@ modules:
         predator: '{ .predator }'
       values:
         population: '{ .population }'
+
+    - name: animal_cel
+      type: object
+      engine: cel
+      help: Example of top-level lists in a separate module
+      path: '[*]'
+      labels:
+        name: '.noun'
+        predator: '.predator'
+      values:
+        population: '.population'
 
     ## HTTP connection configurations can be set in 'modules.<module_name>.http_client_config' field. For full http client config parameters, ref: https://pkg.go.dev/github.com/prometheus/common/config?tab=doc#HTTPClientConfig
     #
@@ -59,11 +106,11 @@ modules:
     ## If 'modueles.<module_name>.body' field is set, it will be sent by the exporter as the body content in the scrape request. The HTTP method will also be set as 'POST' in this case.
     # body:
     #   content: |
-    #     {"time_diff": "1m25s", "anotherVar": "some value"}
+    #     { "time_diff": "1m25s", "anotherVar": "some value" }
 
     ## The body content can also be a Go Template (https://golang.org/pkg/text/template), with all the functions from the Sprig library (https://masterminds.github.io/sprig/) available. All the query parameters sent by prometheus in the scrape query to the exporter, are available in the template.
     # body:
     #   content: |
-    #     {"time_diff": "{{ duration `95` }}","anotherVar": "{{ .myVal | first }}"}
+    #     { "time_diff": "{{ duration `95` }}","anotherVar": "{{ .myVal | first }}" }
     #   templatize: true
 
